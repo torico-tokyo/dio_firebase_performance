@@ -13,9 +13,10 @@ import 'package:firebase_performance/firebase_performance.dart';
 /// This interceptor might be counting parsing time into elapsed API call duration.
 /// I am not fully aware of [Dio] internal architecture.
 class DioFirebasePerformanceInterceptor extends Interceptor {
-  DioFirebasePerformanceInterceptor(
-      {this.requestContentLengthMethod = defaultRequestContentLength,
-      this.responseContentLengthMethod = defaultResponseContentLength});
+  DioFirebasePerformanceInterceptor({
+    this.requestContentLengthMethod = defaultRequestContentLength,
+    this.responseContentLengthMethod = defaultResponseContentLength,
+  });
 
   /// key: requestKey hash code, value: ongoing metric
   final _map = <int, HttpMetric>{};
@@ -24,10 +25,14 @@ class DioFirebasePerformanceInterceptor extends Interceptor {
 
   @override
   Future onRequest(
-      RequestOptions options, RequestInterceptorHandler handler) async {
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
     try {
       final metric = FirebasePerformance.instance.newHttpMetric(
-          options.uri.normalized(), options.method.asHttpMethod()!);
+        options.uri.normalized(),
+        options.method.asHttpMethod()!,
+      );
 
       final requestKey = options.extra.hashCode;
       _map[requestKey] = metric;
@@ -42,19 +47,30 @@ class DioFirebasePerformanceInterceptor extends Interceptor {
 
   @override
   Future onResponse(
-      Response response, ResponseInterceptorHandler handler) async {
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) async {
     try {
       final requestKey = response.requestOptions.extra.hashCode;
       final metric = _map[requestKey];
-      metric?.setResponse(response, responseContentLengthMethod);
+      metric?.setResponse(
+        response,
+        responseContentLengthMethod,
+      );
       await metric?.stop();
       _map.remove(requestKey);
     } catch (_) {}
-    return super.onResponse(response, handler);
+    return super.onResponse(
+      response,
+      handler,
+    );
   }
 
   @override
-  Future onError(DioError err, ErrorInterceptorHandler handler) async {
+  Future onError(
+    DioError err,
+    ErrorInterceptorHandler handler,
+  ) async {
     try {
       final requestKey = err.requestOptions.extra.hashCode;
       final metric = _map[requestKey];
@@ -89,8 +105,10 @@ int? defaultResponseContentLength(Response response) {
 }
 
 extension _ResponseHttpMetric on HttpMetric {
-  void setResponse(Response? value,
-      ResponseContentLengthMethod responseContentLengthMethod) {
+  void setResponse(
+    Response? value,
+    ResponseContentLengthMethod responseContentLengthMethod,
+  ) {
     if (value == null) {
       return;
     }
